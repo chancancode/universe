@@ -101,7 +101,7 @@ Robot::Robot( const Pose& pose,
 void Robot::Init( int argc, char** argv )
 {
   // seed the random number generator with the current time
-  srand48(time(NULL));
+  srand48(0);
 	
   // parse arguments to configure Robot static members
 	int c;
@@ -110,56 +110,56 @@ void Robot::Init( int argc, char** argv )
 			{
 			case 'p': 
 				population_size = atoi( optarg );
-				printf( "[Uni] population_size: %d\n", population_size );
+				fprintf( stderr, "[Uni] population_size: %d\n", population_size );
 				break;
 				
 			case 's': 
 				worldsize = atof( optarg );
-				printf( "[Uni] worldsize: %.2f\n", worldsize );
+				fprintf( stderr, "[Uni] worldsize: %.2f\n", worldsize );
 				break;
 				
 			case 'f': 
 				fov = dtor(atof( optarg )); // degrees to radians
-				printf( "[Uni] fov: %.2f\n", fov );
+				fprintf( stderr, "[Uni] fov: %.2f\n", fov );
 				break;
 				
 			case 'r': 
 				range = atof( optarg );
-				printf( "[Uni] range: %.2f\n", range );
+				fprintf( stderr, "[Uni] range: %.2f\n", range );
 				break;
 				
 			case 'c':
 				pixel_count = atoi( optarg );
-				printf( "[Uni] pixel_count: %d\n", pixel_count );
+				fprintf( stderr, "[Uni] pixel_count: %d\n", pixel_count );
 				break;
 				
       case 'u':
 				updates_max = atol( optarg );
-				printf( "[Uni] updates_max: %lu\n", (long unsigned)updates_max );
+				fprintf( stderr, "[Uni] updates_max: %lu\n", (long unsigned)updates_max );
 				break;
 				
 			case 'z':
 				sleep_msec = atoi( optarg );
-				printf( "[Uni] sleep_msec: %d\n", sleep_msec );
+				fprintf( stderr, "[Uni] sleep_msec: %d\n", sleep_msec );
 				break;
 				
 #if GRAPHICS
 			case 'w': winsize = atoi( optarg );
-				printf( "[Uni] winsize: %d\n", winsize );
+				fprintf( stderr, "[Uni] winsize: %d\n", winsize );
 				break;
 
 			case 'd': show_data= false;
-			  puts( "[Uni] hide data" );
+			  fprintf( stderr, "[Uni] hide data" );
 			  break;
 #endif			
 			case '?':
-			  puts( usage );
+			  fprintf( stderr, usage );
 			  exit(0); // ok
 			  break;
 
 			default:
 				fprintf( stderr, "[Uni] Option parse error.\n" );
-				puts( usage );
+				fprintf( stderr, usage );
 				exit(-1); // error
 			}
 	
@@ -296,7 +296,12 @@ void Robot::UpdateAll()
 {
   // if we've done enough updates, exit the program
   if( updates_max > 0 && updates > updates_max )
-	 exit(1);
+    {
+        FOR_EACH( r, population )
+			printf( "x %3f y %3f a %3f\n", (*r)->pose.x, (*r)->pose.y, (*r)->pose.a);
+        
+        exit(1);
+    }
   
   if( ! Robot::paused )
 		{
