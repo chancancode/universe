@@ -1,0 +1,29 @@
+Population 10:
+
+real	0m0.615s
+user	0m0.302s
+sys	0m0.156s
+
+Population 100:
+
+real	0m2.543s
+user	0m2.182s
+sys	0m0.205s
+
+Population 500:
+
+real	1m0.722s
+user	0m57.714s
+sys	0m0.741s
+
+Population 1000:
+
+real	4m38.937s
+user	4m30.568s
+sys	0m2.525s
+
+Population 5000:
+
+real	79m52.264s
+user	77m17.667s
+sys	0m23.919s
