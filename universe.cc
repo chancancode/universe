@@ -19,6 +19,7 @@ const char* PROGNAME = "universe";
 // initialize static members
 double Robot::worldsize(1.0);
 double Robot::range( 0.1 );
+double Robot::half_range( 0.05 );
 double Robot::fov(  dtor(270.0) );
 std::vector<Robot*> Robot::population;
 std::vector<Robot*> Robot::left;
@@ -69,45 +70,45 @@ static void display_func( void )
   glBegin( GL_POLYGON );
   glColor3f( 0.9,0.9,1 );
   glVertex2f( 0.0,0.0 );
-  glVertex2f( Robot::range,0.0 );
-  glVertex2f( Robot::range,1.0 );
+  glVertex2f( Robot::half_range,0.0 );
+  glVertex2f( Robot::half_range,1.0 );
   glVertex2f( 0.0,1.0 );
   glEnd();
   
   // Draw the left sector
   glBegin( GL_POLYGON );
   glColor3f( 1,0.9,0.9 );
-  glVertex2f( 0.0+Robot::range,0.0 );
-  glVertex2f( 0.5-Robot::range,0.0 );
-  glVertex2f( 0.5-Robot::range,1.0 );
-  glVertex2f( 0.0+Robot::range,1.0 );
+  glVertex2f( 0.0+Robot::half_range,0.0 );
+  glVertex2f( 0.5-Robot::half_range,0.0 );
+  glVertex2f( 0.5-Robot::half_range,1.0 );
+  glVertex2f( 0.0+Robot::half_range,1.0 );
   glEnd();
   
   // Draw the middle common sector
   glBegin( GL_POLYGON );
   glColor3f( 0.9,0.9,1 );
-  glVertex2f( 0.5-Robot::range,0.0 );
-  glVertex2f( 0.5+Robot::range,0.0 );
-  glVertex2f( 0.5+Robot::range,1.0 );
-  glVertex2f( 0.5-Robot::range,1.0 );
+  glVertex2f( 0.5-Robot::half_range,0.0 );
+  glVertex2f( 0.5+Robot::half_range,0.0 );
+  glVertex2f( 0.5+Robot::half_range,1.0 );
+  glVertex2f( 0.5-Robot::half_range,1.0 );
   glEnd();
   
   // Draw the right sector
   glBegin( GL_POLYGON );
   glColor3f( 0.9,1,0.9 );
-  glVertex2f( 0.5+Robot::range,0.0 );
-  glVertex2f( 1.0-Robot::range,0.0 );
-  glVertex2f( 1.0-Robot::range,1.0 );
-  glVertex2f( 0.5+Robot::range,1.0 );
+  glVertex2f( 0.5+Robot::half_range,0.0 );
+  glVertex2f( 1.0-Robot::half_range,0.0 );
+  glVertex2f( 1.0-Robot::half_range,1.0 );
+  glVertex2f( 0.5+Robot::half_range,1.0 );
   glEnd();
   
   // Draw the right common sector
   glBegin( GL_POLYGON );
   glColor3f( 0.9,0.9,1 );
-  glVertex2f( 1.0-Robot::range,0.0 );
+  glVertex2f( 1.0-Robot::half_range,0.0 );
   glVertex2f( 1.0,0.0 );
   glVertex2f( 1.0,1.0 );
-  glVertex2f( 1.0-Robot::range,1.0 );
+  glVertex2f( 1.0-Robot::half_range,1.0 );
   glEnd();
   
   Robot::DrawAll();
@@ -173,6 +174,7 @@ void Robot::Init( int argc, char** argv )
 				
 			case 'r': 
 				range = atof( optarg );
+                half_range = 0.5 * range;
 				fprintf( stderr, "[Uni] range: %.2f\n", range );
 				break;
 				
@@ -346,11 +348,11 @@ void Robot::UpdatePose()
   pose.y = DistanceNormalize( pose.y + dy );
   pose.a = AngleNormalize( pose.a + da );
   
-  if(pose.x > range && pose.x < 0.5-range){
+  if(pose.x > half_range && pose.x < 0.5-half_range){
       // left
       color = Color(1,0,0);
       left.push_back(this);
-  }else if(pose.x > 0.5 + range && pose.x < 1.0-range){
+  }else if(pose.x > 0.5 + half_range && pose.x < 1.0-half_range){
       // right
       color = Color(0,1,0);
       right.push_back(this);

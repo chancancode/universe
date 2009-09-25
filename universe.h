@@ -95,6 +95,7 @@ namespace Uni
 	 static unsigned int sleep_msec; // number of milliseconds to sleep at each update
 	 static double worldsize; // side length of the toroidal world
 	 static double range;    // sensor detects objects up tp this maximum distance
+   static double half_range;
 	 static double fov;      // sensor detects objects within this angular field-of-view about the current heading
 	 static unsigned int pixel_count; // number of pixels in sensor
 	 static std::vector<Robot*> population;
