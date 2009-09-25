@@ -67,7 +67,7 @@ static void display_func( void )
   
   // Draw the left common sector
   glBegin( GL_POLYGON );
-  glColor4f( 1,1,0,0.3 );
+  glColor3f( 0.9,0.9,1 );
   glVertex2f( 0.0,0.0 );
   glVertex2f( Robot::range,0.0 );
   glVertex2f( Robot::range,1.0 );
@@ -76,7 +76,7 @@ static void display_func( void )
   
   // Draw the left sector
   glBegin( GL_POLYGON );
-  glColor4f( 1,0,0,0.3 );
+  glColor3f( 1,0.9,0.9 );
   glVertex2f( 0.0+Robot::range,0.0 );
   glVertex2f( 0.5-Robot::range,0.0 );
   glVertex2f( 0.5-Robot::range,1.0 );
@@ -85,7 +85,7 @@ static void display_func( void )
   
   // Draw the middle common sector
   glBegin( GL_POLYGON );
-  glColor4f( 1,1,0,0.3 );
+  glColor3f( 0.9,0.9,1 );
   glVertex2f( 0.5-Robot::range,0.0 );
   glVertex2f( 0.5+Robot::range,0.0 );
   glVertex2f( 0.5+Robot::range,1.0 );
@@ -94,7 +94,7 @@ static void display_func( void )
   
   // Draw the right sector
   glBegin( GL_POLYGON );
-  glColor4f( 0,1,0,0.3 );
+  glColor3f( 0.9,1,0.9 );
   glVertex2f( 0.5+Robot::range,0.0 );
   glVertex2f( 1.0-Robot::range,0.0 );
   glVertex2f( 1.0-Robot::range,1.0 );
@@ -103,7 +103,7 @@ static void display_func( void )
   
   // Draw the right common sector
   glBegin( GL_POLYGON );
-  glColor4f( 1,1,0,0.3 );
+  glColor3f( 0.9,0.9,1 );
   glVertex2f( 1.0-Robot::range,0.0 );
   glVertex2f( 1.0,0.0 );
   glVertex2f( 1.0,1.0 );
@@ -266,8 +266,15 @@ void Robot::UpdatePixels()
       it->robot = NULL; // nothing detected
     }
   
+  std::vector<Robot*> *sector = 0;
+  
+  if(pose.x < 0.5)
+      sector = &left;
+  else
+      sector = &right;
+  
   // check every robot in the world to see if it is detected
-  FOR_EACH( it, population )
+  FOR_EACH( it, *sector )
     {
       Robot* other = *it;
       
@@ -338,6 +345,21 @@ void Robot::UpdatePose()
   pose.x = DistanceNormalize( pose.x + dx );
   pose.y = DistanceNormalize( pose.y + dy );
   pose.a = AngleNormalize( pose.a + da );
+  
+  if(pose.x > range && pose.x < 0.5-range){
+      // left
+      color = Color(1,0,0);
+      left.push_back(this);
+  }else if(pose.x > 0.5 + range && pose.x < 1.0-range){
+      // right
+      color = Color(0,1,0);
+      right.push_back(this);
+  }else{
+      // both
+      color = Color(0,0,1);
+      left.push_back(this);
+      right.push_back(this);
+  }
 }
 
 void Robot::UpdateAll()
@@ -353,6 +375,9 @@ void Robot::UpdateAll()
   
   if( ! Robot::paused )
 		{
+            left.clear();
+            right.clear();
+		    
 			FOR_EACH( r, population )
 				(*r)->UpdatePose();
 
@@ -397,7 +422,7 @@ void Robot::Draw()
 				double dx2 = pixels[p].range * cos(angle-rads_per_pixel/2.0);
 				double dy2 = pixels[p].range * sin(angle-rads_per_pixel/2.0);
 				
-				glColor4f( 0,0,1, pixels[p].robot ? 0.2 : 0.05 );
+				glColor4f( color.r, color.g, color.b, pixels[p].robot ? 0.2 : 0.05 );
 				
 				glBegin( GL_POLYGON );
 				glVertex2f( 0,0 );
