@@ -21,6 +21,8 @@ double Robot::worldsize(1.0);
 double Robot::range( 0.1 );
 double Robot::fov(  dtor(270.0) );
 std::vector<Robot*> Robot::population;
+std::vector<Robot*> Robot::left;
+std::vector<Robot*> Robot::right;
 unsigned int Robot::population_size( 100 );
 unsigned int Robot::pixel_count( 8);
 unsigned int Robot::sleep_msec( 50 );
@@ -61,7 +63,53 @@ static void timer_func( int dummy )
 // draw the world - this is called whenever the window needs redrawn
 static void display_func( void ) 
 {  
-  glClear( GL_COLOR_BUFFER_BIT );  
+  glClear( GL_COLOR_BUFFER_BIT );
+  
+  // Draw the left common sector
+  glBegin( GL_POLYGON );
+  glColor4f( 1,1,0,0.3 );
+  glVertex2f( 0.0,0.0 );
+  glVertex2f( Robot::range,0.0 );
+  glVertex2f( Robot::range,1.0 );
+  glVertex2f( 0.0,1.0 );
+  glEnd();
+  
+  // Draw the left sector
+  glBegin( GL_POLYGON );
+  glColor4f( 1,0,0,0.3 );
+  glVertex2f( 0.0+Robot::range,0.0 );
+  glVertex2f( 0.5-Robot::range,0.0 );
+  glVertex2f( 0.5-Robot::range,1.0 );
+  glVertex2f( 0.0+Robot::range,1.0 );
+  glEnd();
+  
+  // Draw the middle common sector
+  glBegin( GL_POLYGON );
+  glColor4f( 1,1,0,0.3 );
+  glVertex2f( 0.5-Robot::range,0.0 );
+  glVertex2f( 0.5+Robot::range,0.0 );
+  glVertex2f( 0.5+Robot::range,1.0 );
+  glVertex2f( 0.5-Robot::range,1.0 );
+  glEnd();
+  
+  // Draw the right sector
+  glBegin( GL_POLYGON );
+  glColor4f( 0,1,0,0.3 );
+  glVertex2f( 0.5+Robot::range,0.0 );
+  glVertex2f( 1.0-Robot::range,0.0 );
+  glVertex2f( 1.0-Robot::range,1.0 );
+  glVertex2f( 0.5+Robot::range,1.0 );
+  glEnd();
+  
+  // Draw the right common sector
+  glBegin( GL_POLYGON );
+  glColor4f( 1,1,0,0.3 );
+  glVertex2f( 1.0-Robot::range,0.0 );
+  glVertex2f( 1.0,0.0 );
+  glVertex2f( 1.0,1.0 );
+  glVertex2f( 1.0-Robot::range,1.0 );
+  glEnd();
+  
   Robot::DrawAll();
   glutSwapBuffers();
 	
@@ -169,7 +217,7 @@ void Robot::Init( int argc, char** argv )
   glutInitWindowSize( winsize, winsize );
   glutInitDisplayMode( GLUT_DOUBLE | GLUT_RGBA );
   glutCreateWindow( PROGNAME );
-  glClearColor( 0.8,0.8,1.0,1.0 );
+  glClearColor( 1,1,1,1 );
   glutDisplayFunc( display_func );
   glutTimerFunc( 50, timer_func, 0 );
   glutMouseFunc( mouse_func );
@@ -182,7 +230,7 @@ void Robot::Init( int argc, char** argv )
   glMatrixMode( GL_MODELVIEW );
   glLoadIdentity();
   glScalef( 1.0/Robot::worldsize, 1.0/Robot::worldsize, 1 ); 
-  
+
   // define a display list for a robot body
   double h = 0.01;
   double w = 0.01;
@@ -349,7 +397,7 @@ void Robot::Draw()
 				double dx2 = pixels[p].range * cos(angle-rads_per_pixel/2.0);
 				double dy2 = pixels[p].range * sin(angle-rads_per_pixel/2.0);
 				
-				glColor4f( 1,0,0, pixels[p].robot ? 0.2 : 0.05 );
+				glColor4f( 0,0,1, pixels[p].robot ? 0.2 : 0.05 );
 				
 				glBegin( GL_POLYGON );
 				glVertex2f( 0,0 );
