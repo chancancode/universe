@@ -21,9 +21,11 @@ double Robot::worldsize(1.0);
 double Robot::range( 0.1 );
 double Robot::fov(  dtor(270.0) );
 std::vector<Robot*> Robot::population;
-std::vector<Robot*> Robot::left;
-std::vector<Robot*> Robot::right;
 unsigned int Robot::population_size( 100 );
+std::vector< std::vector< std::vector<Robot*> > > Robot::sectors;
+int Robot::num_of_sectors( 1 );
+double Robot::sector_width( 0.1 );
+int Robot::sector_search_radius( 1 );
 unsigned int Robot::pixel_count( 8);
 unsigned int Robot::sleep_msec( 50 );
 uint64_t Robot::updates(0);
@@ -65,50 +67,18 @@ static void display_func( void )
 {  
   glClear( GL_COLOR_BUFFER_BIT );
   
-  // Draw the left common sector
-  glBegin( GL_POLYGON );
-  glColor3f( 0.9,0.9,1 );
-  glVertex2f( 0.0,0.0 );
-  glVertex2f( Robot::range,0.0 );
-  glVertex2f( Robot::range,1.0 );
-  glVertex2f( 0.0,1.0 );
-  glEnd();
-  
-  // Draw the left sector
-  glBegin( GL_POLYGON );
-  glColor3f( 1,0.9,0.9 );
-  glVertex2f( 0.0+Robot::range,0.0 );
-  glVertex2f( 0.5-Robot::range,0.0 );
-  glVertex2f( 0.5-Robot::range,1.0 );
-  glVertex2f( 0.0+Robot::range,1.0 );
-  glEnd();
-  
-  // Draw the middle common sector
-  glBegin( GL_POLYGON );
-  glColor3f( 0.9,0.9,1 );
-  glVertex2f( 0.5-Robot::range,0.0 );
-  glVertex2f( 0.5+Robot::range,0.0 );
-  glVertex2f( 0.5+Robot::range,1.0 );
-  glVertex2f( 0.5-Robot::range,1.0 );
-  glEnd();
-  
-  // Draw the right sector
-  glBegin( GL_POLYGON );
-  glColor3f( 0.9,1,0.9 );
-  glVertex2f( 0.5+Robot::range,0.0 );
-  glVertex2f( 1.0-Robot::range,0.0 );
-  glVertex2f( 1.0-Robot::range,1.0 );
-  glVertex2f( 0.5+Robot::range,1.0 );
-  glEnd();
-  
-  // Draw the right common sector
-  glBegin( GL_POLYGON );
-  glColor3f( 0.9,0.9,1 );
-  glVertex2f( 1.0-Robot::range,0.0 );
-  glVertex2f( 1.0,0.0 );
-  glVertex2f( 1.0,1.0 );
-  glVertex2f( 1.0-Robot::range,1.0 );
-  glEnd();
+  // Draw the checker board
+  for(int i=0;i<Robot::num_of_sectors;i++)
+      for(int j=0;j<Robot::num_of_sectors;j++)
+      {
+          glBegin( GL_POLYGON );
+          ((i%2+j%2)%2 == 0)? glColor3f( 0.9,0.9,1 ) : glColor3f( 1,0.9,0.9 );
+          glVertex2f( i*Robot::sector_width,j*Robot::sector_width );
+          glVertex2f( (i+1)*Robot::sector_width,j*Robot::sector_width );
+          glVertex2f( (i+1)*Robot::sector_width,(j+1)*Robot::sector_width );
+          glVertex2f( i*Robot::sector_width,(j+1)*Robot::sector_width );
+          glEnd();
+      }
   
   Robot::DrawAll();
   glutSwapBuffers();
@@ -181,7 +151,7 @@ void Robot::Init( int argc, char** argv )
 				fprintf( stderr, "[Uni] pixel_count: %d\n", pixel_count );
 				break;
 				
-      case 'u':
+            case 'u':
 				updates_max = atol( optarg );
 				fprintf( stderr, "[Uni] updates_max: %lu\n", (long unsigned)updates_max );
 				break;
@@ -209,47 +179,53 @@ void Robot::Init( int argc, char** argv )
 				fprintf( stderr, "[Uni] Option parse error.\n" );
 				fprintf( stderr, usage );
 				exit(-1); // error
-			}
+		}
+	
+	// initialize the sectors
+    num_of_sectors = floor(worldsize / range);
+    sector_width = worldsize / num_of_sectors;
+    sector_search_radius = ceil( range / sector_width);
+    sectors = std::vector< std::vector< std::vector<Robot*> > >(num_of_sectors, std::vector< std::vector<Robot*> >(num_of_sectors));
 	
 #if GRAPHICS
-  // initialize opengl graphics
-  glutInit( &argc, argv );
-  glutInitWindowSize( winsize, winsize );
-  glutInitDisplayMode( GLUT_DOUBLE | GLUT_RGBA );
-  glutCreateWindow( PROGNAME );
-  glClearColor( 1,1,1,1 );
-  glutDisplayFunc( display_func );
-  glutTimerFunc( 50, timer_func, 0 );
-  glutMouseFunc( mouse_func );
-  glutIdleFunc( idle_func );
-  glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-  glEnable( GL_BLEND );
-  glMatrixMode( GL_PROJECTION );
-  glLoadIdentity();
-  gluOrtho2D( 0,1,0,1 );
-  glMatrixMode( GL_MODELVIEW );
-  glLoadIdentity();
-  glScalef( 1.0/Robot::worldsize, 1.0/Robot::worldsize, 1 ); 
+    // initialize opengl graphics
+    glutInit( &argc, argv );
+    glutInitWindowSize( winsize, winsize );
+    glutInitDisplayMode( GLUT_DOUBLE | GLUT_RGBA );
+    glutCreateWindow( PROGNAME );
+    glClearColor( 1,1,1,1 );
+    glutDisplayFunc( display_func );
+    glutTimerFunc( 50, timer_func, 0 );
+    glutMouseFunc( mouse_func );
+    glutIdleFunc( idle_func );
+    glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+    glEnable( GL_BLEND );
+    glMatrixMode( GL_PROJECTION );
+    glLoadIdentity();
+    gluOrtho2D( 0,1,0,1 );
+    glMatrixMode( GL_MODELVIEW );
+    glLoadIdentity();
+    glScalef( 1.0/Robot::worldsize, 1.0/Robot::worldsize, 1 ); 
 
-  // define a display list for a robot body
-  double h = 0.01;
-  double w = 0.01;
+    // define a display list for a robot body
+    double h = 0.01;
+    double w = 0.01;
 
-	glPointSize( 4.0 );
+    glPointSize( 4.0 );
 
-  displaylist = glGenLists(1);
-  glNewList( displaylist, GL_COMPILE );
+    displaylist = glGenLists(1);
+    glNewList( displaylist, GL_COMPILE );
 
-  glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+    glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
 
-  glBegin( GL_POLYGON );
-  glVertex2f( h/2.0, 0 );
-  glColor3f( 0,0,0 ); // black
-  glVertex2f( -h/2.0,  w/2.0 );
-  glVertex2f( -h/2.0, -w/2.0 );
-  glEnd();
+    glBegin( GL_POLYGON );
+    glVertex2f( h/2.0, 0 );
+    glColor3f( 0,0,0 ); // black
+    glVertex2f( -h/2.0,  w/2.0 );
+    glVertex2f( -h/2.0, -w/2.0 );
+    glEnd();
 
-  glEndList();
+    glEndList();
 #endif // GRAPHICS
 }
 
@@ -268,10 +244,11 @@ void Robot::UpdatePixels()
   
   std::vector<Robot*> *sector = 0;
   
-  if(pose.x < 0.5)
-      sector = &left;
-  else
-      sector = &right;
+  // find my location
+  int grid_x = floor(pose.x/sector_width);
+  int grid_y = floor(pose.y/sector_width);
+  
+  sector = &sectors[grid_x][grid_y];
   
   // check every robot in the world to see if it is detected
   FOR_EACH( it, *sector )
@@ -346,20 +323,22 @@ void Robot::UpdatePose()
   pose.y = DistanceNormalize( pose.y + dy );
   pose.a = AngleNormalize( pose.a + da );
   
-  if(pose.x > range && pose.x < 0.5-range){
-      // left
-      color = Color(1,0,0);
-      left.push_back(this);
-  }else if(pose.x > 0.5 + range && pose.x < 1.0-range){
-      // right
-      color = Color(0,1,0);
-      right.push_back(this);
-  }else{
-      // both
-      color = Color(0,0,1);
-      left.push_back(this);
-      right.push_back(this);
-  }
+  // find my location
+  int grid_x = floor(pose.x/sector_width);
+  int grid_y = floor(pose.y/sector_width);
+  
+#if GRAPHICS
+  // color myself
+  if((grid_x%2+grid_y%2)%2 == 0)
+    color = Color(0,0,1);
+  else
+    color = Color(1,0,0);
+#endif
+  
+  // Register with the sectors
+  for(int i=grid_x-sector_search_radius;i<=grid_x+sector_search_radius;i++)
+    for(int j=grid_y-sector_search_radius;j<=grid_y+sector_search_radius;j++)
+      sectors.at((i+num_of_sectors)%num_of_sectors).at((j+num_of_sectors)%num_of_sectors).push_back(this);
 }
 
 void Robot::UpdateAll()
@@ -375,9 +354,8 @@ void Robot::UpdateAll()
   
   if( ! Robot::paused )
 		{
-            left.clear();
-            right.clear();
-		    
+            sectors = std::vector< std::vector< std::vector<Robot*> > >(num_of_sectors, std::vector< std::vector<Robot*> >(num_of_sectors));
+            		    
 			FOR_EACH( r, population )
 				(*r)->UpdatePose();
 

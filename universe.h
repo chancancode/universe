@@ -97,10 +97,12 @@ namespace Uni
 	 static double range;    // sensor detects objects up tp this maximum distance
 	 static double fov;      // sensor detects objects within this angular field-of-view about the current heading
 	 static unsigned int pixel_count; // number of pixels in sensor
-	 static std::vector<Robot*> population;
-   static std::vector<Robot*> left;
-   static std::vector<Robot*> right;
+	 static std::vector<Robot*> population; // a list of all robots
 	 static unsigned int population_size; // number of robots
+   static std::vector< std::vector< std::vector<Robot*> > > sectors; // 3D vector of robots (ouch brain hurts)
+   static int num_of_sectors; // number of sectors per row/col
+   static double sector_width; // width of each sector
+   static int sector_search_radius; // the number of adjecent sectors to search
 	 static bool paused; // runs only when this is false
 	 static bool show_data; // controls visualization of pixel data
 	 static int winsize; // initial size of the window in pixels
