@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BRANCH=`ruby -e "b = (%x{git branch 2> /dev/null}.grep(/^\*/).first || '').gsub(/^\* (.+)$/, '\1').chomp;print (b=='master')?'original':b"`
+# BRANCH=`ruby -e "b = (%x{git branch 2> /dev/null}.grep(/^\*/).first || '').gsub(/^\* (.+)$/, '\1').chomp;print (b=='master')?'original':b"`
 mkdir results/$BRANCH
 
 for population in 10 100 500 $((10**3)) $((10**3 *5))
