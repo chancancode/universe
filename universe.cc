@@ -338,7 +338,7 @@ void Robot::UpdatePose()
   // Register with the sectors
   for(int i=grid_x-sector_search_radius;i<=grid_x+sector_search_radius;i++)
     for(int j=grid_y-sector_search_radius;j<=grid_y+sector_search_radius;j++)
-      sectors.at((i+num_of_sectors)%num_of_sectors).at((j+num_of_sectors)%num_of_sectors).push_back(this);
+      sectors[(i+num_of_sectors)%num_of_sectors][(j+num_of_sectors)%num_of_sectors].push_back(this);
 }
 
 void Robot::UpdateAll()
