@@ -24,8 +24,8 @@ public:
   // speed sensibly.
   virtual void Controller()
   {
-      speed_next[id][0] = 0.005;   // constant forward speed 
-      speed_next[id][1] = 0.0;     // no turning. we may change this below
+      speed.v = 0.005;   // constant forward speed 
+      speed.w = 0.0;     // no turning. we may change this below
       
       // steer away from the closest roboot
       int closest = -1;
@@ -42,12 +42,12 @@ public:
            return;
       
       if( closest < (int)pixel_count / 2 )
-           speed_next[id][1] = 0.03; 
+           speed.w = 0.03; 
       else
-           speed_next[id][1] = -0.03; // turn left
+           speed.w = -0.03; // turn left
       
       if( invert )
-           speed_next[id][1] *= -1.0; // invert turn direction
+           speed.w *= -1.0; // invert turn direction
      }     
 };
 

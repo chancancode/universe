@@ -27,6 +27,16 @@ namespace Uni
   class Robot
   {
   public:
+   class Speed
+   {    
+   public:
+    double v; // forward speed
+    double w; // turn speed
+   
+    // constructor sets speeds to zero
+    Speed() : v(0.0), w(0.0) {}
+   };
+   
 	 // each robot has a vector of these to store its observations
 	 class Pixel
 	 {
@@ -69,7 +79,6 @@ namespace Uni
    static std::vector< std::vector< std::vector<Robot*> > > sectors; // 3D vector of robots (ouch brain hurts)
    static int num_of_sectors; // number of sectors per row/col
    static double sector_width; // width of each sector
-   //static int sector_search_radius; // the number of adjecent sectors to search
 	 static bool paused; // runs only when this is false
 	 static bool show_data; // controls visualization of pixel data
 	 static int winsize; // initial size of the window in pixels
@@ -79,12 +88,10 @@ namespace Uni
    
    /* Read Only */
    static double **pose;
-   static double **speed;
    static double **color;
 
    /* Write Only */
    static double **pose_next;
-   static double **speed_next;
    static double **color_next;
 
 #if GRAPHICS
@@ -96,6 +103,7 @@ namespace Uni
 	 
    int id;
 	 std::vector<Pixel> pixels; // robot's sensor data vector
+   Speed speed;
    int grid_location[2]; // which sector am I in
    
 	 // create a new robot with these parameters

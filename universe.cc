@@ -27,17 +27,15 @@ int Robot::num_of_sectors( 1 );
 double Robot::sector_width( 0.1 );
 unsigned int Robot::pixel_count( 8);
 unsigned int Robot::sleep_msec( 50 );
-uint64_t Robot::updates(0);
+uint64_t Robot::updates(1);
 uint64_t Robot::updates_max( 0.0 ); 
 bool Robot::paused( false );
 int Robot::winsize( 600 );
 int Robot::displaylist(0);
 bool Robot::show_data( true );
 double **Robot::pose;
-double **Robot::speed;
 double **Robot::color;
 double **Robot::pose_next;
-double **Robot::speed_next;
 double **Robot::color_next;
 
 char usage[] = "Universe understands these command line arguments:\n"
@@ -110,7 +108,7 @@ void Robot::DrawAll()
 #endif // GRAPHICS
 
 Robot::Robot(double x, double y, double a, double r, double g, double b)
-  : pixels()
+  : pixels(), speed()
 {
   // add myself to the static vector of all robots
   id = population.size();
@@ -119,9 +117,6 @@ Robot::Robot(double x, double y, double a, double r, double g, double b)
   pose_next[id][0] = x;
   pose_next[id][1] = y;
   pose_next[id][2] = a;
-  
-  speed_next[id][0] = 0.0;
-  speed_next[id][1] = 0.0;
   
   color_next[id][0] = r;
   color_next[id][1] = g;
@@ -211,20 +206,16 @@ void Robot::Init( int argc, char** argv )
     
 	// initialize the buffers
     pose  = new double*[population_size];
-    speed = new double*[population_size];
     color = new double*[population_size];
     
     pose_next  = new double*[population_size];
-    speed_next = new double*[population_size];
     color_next = new double*[population_size];
     
     for(unsigned int i=0;i<population_size;i++){
         pose[i]  = new double[3]; // x,y,a
-        speed[i] = new double[2]; // v,w
         color[i] = new double[3]; // r,g,b
         
         pose_next[i]  = new double[3];
-        speed_next[i] = new double[2];
         color_next[i] = new double[3];
     }
 
@@ -286,10 +277,7 @@ void Robot::UpdatePixels()
   std::vector<Robot*> *sector = 0;
   
   // find my location
-  int grid_x = floor(pose_next[id][0]/sector_width);
-  int grid_y = floor(pose_next[id][1]/sector_width);
-  
-  sector = &sectors[grid_x][grid_y];
+  sector = &sectors[grid_location[0]][grid_location[1]];
   
   // check every robot in the world to see if it is detected
   FOR_EACH( it, *sector )
@@ -303,7 +291,7 @@ void Robot::UpdatePixels()
       // discard if it's out of range. We put off computing the
       // hypotenuse as long as we can, as it's relatively expensive.
 		
-      double dx = pose_next[other->id][0] - pose_next[id][0];
+      double dx = pose[other->id][0] - pose[id][0];
 
 		// wrap around torus
 		if( dx > halfworld )
@@ -314,7 +302,7 @@ void Robot::UpdatePixels()
 		if( fabs(dx) > Robot::range )
 		  continue; // out of range
 		
-      double dy = pose_next[other->id][1] - pose_next[id][1];
+      double dy = pose[other->id][1] - pose[id][1];
 
 		// wrap around torus
 		if( dy > halfworld )
@@ -331,7 +319,7 @@ void Robot::UpdatePixels()
 			
       // discard if it's out of field of view 
       double absolute_heading = atan2( dy, dx );
-      double relative_heading = AngleNormalize((absolute_heading - pose_next[id][2]) );
+      double relative_heading = AngleNormalize((absolute_heading - pose[id][2]) );
       if( fabs(relative_heading) > fov/2.0   ) 
 				continue; 
 			
@@ -356,9 +344,9 @@ void Robot::UpdatePixels()
 void Robot::UpdatePose()
 {
   // move according to the current speed 
-  double dx = speed[id][0] * cos(pose[id][2]);
-  double dy = speed[id][0] * sin(pose[id][2]);; 
-  double da = speed[id][1];
+  double dx = speed.v * cos(pose[id][2]);
+  double dy = speed.v * sin(pose[id][2]);; 
+  double da = speed.w;
   
   pose_next[id][0] = DistanceNormalize( pose[id][0] + dx );
   pose_next[id][1] = DistanceNormalize( pose[id][1] + dy );
@@ -413,13 +401,13 @@ void Robot::UpdateAll()
             /** Parallel **/
             
 			FOR_EACH( r, population )
-				(*r)->UpdatePose();
-
-			FOR_EACH( r, population )
 				(*r)->UpdatePixels();
 
 			FOR_EACH( r, population )
 				(*r)->Controller();
+			
+			FOR_EACH( r, population )
+				(*r)->UpdatePose();
 		}
 
   ++updates;
@@ -506,11 +494,9 @@ void Robot::SwapBuffers()
     pose = pose_next;
     pose_next = temp;
     
-    temp = speed;
-    speed = speed_next;
-    speed_next = temp;
-    
+#if GRAPHICS
     temp = color;
     color = color_next;
     color_next = temp;
+#endif
 }
