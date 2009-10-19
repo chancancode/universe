@@ -78,28 +78,14 @@ namespace Uni
    /** Double Buffer **/
    
    /* Read Only */
-   static double *pose_x;
-   static double *pose_y;
-   static double *pose_a;
-
-   static double *speed_v;
-   static double *speed_w;
-
-   static double *color_r;
-   static double *color_g;
-   static double *color_b;
+   static double **pose;
+   static double **speed;
+   static double **color;
 
    /* Write Only */
-   static double *pose_next_x;
-   static double *pose_next_y;
-   static double *pose_next_a;
-
-   static double *speed_next_v;
-   static double *speed_next_w;
-
-   static double *color_next_r;
-   static double *color_next_g;
-   static double *color_next_b;
+   static double **pose_next;
+   static double **speed_next;
+   static double **color_next;
 
 #if GRAPHICS
 	 /** render all robots in OpenGL */
