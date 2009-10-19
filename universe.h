@@ -69,7 +69,7 @@ namespace Uni
    static std::vector< std::vector< std::vector<Robot*> > > sectors; // 3D vector of robots (ouch brain hurts)
    static int num_of_sectors; // number of sectors per row/col
    static double sector_width; // width of each sector
-   static int sector_search_radius; // the number of adjecent sectors to search
+   //static int sector_search_radius; // the number of adjecent sectors to search
 	 static bool paused; // runs only when this is false
 	 static bool show_data; // controls visualization of pixel data
 	 static int winsize; // initial size of the window in pixels
@@ -96,7 +96,8 @@ namespace Uni
 	 
    int id;
 	 std::vector<Pixel> pixels; // robot's sensor data vector
-	 	 
+   int grid_location[2]; // which sector am I in
+   
 	 // create a new robot with these parameters
 	 Robot(double x, double y, double a, double r, double g, double b);
 	 

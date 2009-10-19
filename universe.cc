@@ -25,7 +25,6 @@ unsigned int Robot::population_size( 100 );
 std::vector< std::vector< std::vector<Robot*> > > Robot::sectors;
 int Robot::num_of_sectors( 1 );
 double Robot::sector_width( 0.1 );
-int Robot::sector_search_radius( 1 );
 unsigned int Robot::pixel_count( 8);
 unsigned int Robot::sleep_msec( 50 );
 uint64_t Robot::updates(0);
@@ -128,6 +127,9 @@ Robot::Robot(double x, double y, double a, double r, double g, double b)
   color_next[id][1] = g;
   color_next[id][2] = b;
   
+  grid_location[0] = floor(pose_next[id][0]/sector_width);
+  grid_location[1] = floor(pose_next[id][1]/sector_width);
+  
   pixels.resize( pixel_count );
 }
 
@@ -201,7 +203,6 @@ void Robot::Init( int argc, char** argv )
 	
     num_of_sectors = floor(worldsize / range);
     sector_width = worldsize / num_of_sectors;
-    sector_search_radius = ceil( range / sector_width);
     sectors = std::vector< std::vector< std::vector<Robot*> > >(num_of_sectors, std::vector< std::vector<Robot*> >(num_of_sectors));
     
     FOR_EACH( p, sectors )
@@ -209,29 +210,6 @@ void Robot::Init( int argc, char** argv )
             (*q).reserve(15*population_size/num_of_sectors);
     
 	// initialize the buffers
-	/*
-    pose_x = new double[population_size];
-    pose_y = new double[population_size];
-    pose_a = new double[population_size];
-    
-    speed_v = new double[population_size];
-    speed_w = new double[population_size];
-    
-    color_r = new double[population_size];
-    color_g = new double[population_size];
-    color_b = new double[population_size];
-    
-    pose_next_x = new double[population_size];
-    pose_next_y = new double[population_size];
-    pose_next_a = new double[population_size];
-    
-    speed_next_v = new double[population_size];
-    speed_next_w = new double[population_size];
-    
-    color_next_r = new double[population_size];
-    color_next_g = new double[population_size];
-    color_next_b = new double[population_size];
-    */
     pose  = new double*[population_size];
     speed = new double*[population_size];
     color = new double*[population_size];
@@ -387,12 +365,12 @@ void Robot::UpdatePose()
   pose_next[id][2] = AngleNormalize( pose[id][2] + da );
   
   // find my location
-  int grid_x = floor(pose_next[id][0]/sector_width);
-  int grid_y = floor(pose_next[id][1]/sector_width);
+  grid_location[0] = floor(pose_next[id][0]/sector_width);
+  grid_location[1] = floor(pose_next[id][1]/sector_width);
   
 #if GRAPHICS
   // color myself
-  if((grid_x%2+grid_y%2)%2 == 0){
+  if((grid_location[0]%2+grid_location[1]%2)%2 == 0){
       color_next[id][0] = 0;
       color_next[id][1] = 0;
       color_next[id][2] = 1;
@@ -402,11 +380,6 @@ void Robot::UpdatePose()
       color_next[id][2] = 0;
   }
 #endif
-  
-  // Register with the sectors *move*
-  for(int i=grid_x-sector_search_radius;i<=grid_x+sector_search_radius;i++)
-    for(int j=grid_y-sector_search_radius;j<=grid_y+sector_search_radius;j++)
-      sectors[(i+num_of_sectors)%num_of_sectors][(j+num_of_sectors)%num_of_sectors].push_back(this);
 }
 
 void Robot::UpdateAll()
@@ -424,9 +397,20 @@ void Robot::UpdateAll()
   
   if( ! Robot::paused )
 		{
+		    /** Synchronized **/
+		    
             FOR_EACH( p, sectors )
                 FOR_EACH( q, *p )
                     (*q).clear();
+            
+            // Register each robot with the sectors
+            FOR_EACH( r, population ){
+              for(int i=(*r)->grid_location[0]-1;i<=(*r)->grid_location[0]+1;i++)
+                for(int j=(*r)->grid_location[1]-1;j<=(*r)->grid_location[1]+1;j++)
+                  sectors[(i+num_of_sectors)%num_of_sectors][(j+num_of_sectors)%num_of_sectors].push_back(*r);
+            }
+            
+            /** Parallel **/
             
 			FOR_EACH( r, population )
 				(*r)->UpdatePose();
