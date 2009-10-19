@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define GRAPHICS 0
+#define GRAPHICS 1
 
 // handy STL iterator macro pair. Use FOR_EACH(I,C){ } to get an iterator I to
 // each item in a collection C.
@@ -27,42 +27,6 @@ namespace Uni
   class Robot
   {
   public:
-	 class Pose
-	 {
-	 public:
-		double x,y,a; // 2d position and orientation
-		
-	 Pose( double x, double y, double a ) : x(x), y(y), a(a) {}
-	 Pose() : x(0.0), y(0.0), a(0.0) {}
-		
-		// get a random pose 
-		static Pose Random()
-		{
-		  return Pose( drand48() * Robot::worldsize, 
-									 drand48() * Robot::worldsize, 
-									 Robot::AngleNormalize( drand48() * (M_PI*2.0)));
-		}
-	 };
-	 
-	 class Speed
-	 {		
-	 public:
-		double v; // forward speed
-		double w; // turn speed
-	  	
-		// constructor sets speeds to zero
-	 Speed() : v(0.0), w(0.0) {}		
-	 };
-	 
-	 class Color
-	 {
-	 public:
-		double r, g, b;
-
-	 Color( double r, double g, double b ) :
-		r(r), g(g), b(b) {}
-	 };
-	 
 	 // each robot has a vector of these to store its observations
 	 class Pixel
 	 {
@@ -86,7 +50,10 @@ namespace Uni
 
 	 /** Normalize an angle to within +/_ M_PI. */
 	 static double AngleNormalize( double a );
-	 
+
+	 /** Swap the buffers **/
+   static void SwapBuffers();
+
 	 /** Start running the simulation. Does not return. */
 	 static void Run();
 
@@ -108,6 +75,32 @@ namespace Uni
 	 static int winsize; // initial size of the window in pixels
 	 static int displaylist; // robot body macro
 
+   /** Double Buffer **/
+   
+   /* Read Only */
+   static double *pose_x;
+   static double *pose_y;
+   static double *pose_a;
+
+   static double *speed_v;
+   static double *speed_w;
+
+   static double *color_r;
+   static double *color_g;
+   static double *color_b;
+
+   /* Write Only */
+   static double *pose_next_x;
+   static double *pose_next_y;
+   static double *pose_next_a;
+
+   static double *speed_next_v;
+   static double *speed_next_w;
+
+   static double *color_next_r;
+   static double *color_next_g;
+   static double *color_next_b;
+
 #if GRAPHICS
 	 /** render all robots in OpenGL */
 	 static void DrawAll();
@@ -115,14 +108,11 @@ namespace Uni
 	 
 	 // NON-STATIC DATA AND METHODS ------------------------------------------
 	 
-	 Pose pose;    // robot is located at this pose
-	 Speed speed;  // robot is moving this fast
-	 Color color;  // robot's body has this color  
-
+   int id;
 	 std::vector<Pixel> pixels; // robot's sensor data vector
 	 
 	 // create a new robot with these parameters
-	 Robot( const Pose& pose, const Color& color );
+	 Robot(double x, double y, double a, double r, double g, double b);
 	 
 	 virtual ~Robot() {}
 	 

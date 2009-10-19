@@ -14,15 +14,18 @@ public:
   
   static bool invert;
   
-  Swarmer() : Robot( Pose::Random(), Color(0,0,1) )
+  Swarmer() : Robot( drand48() * Robot::worldsize, 
+					 drand48() * Robot::worldsize, 
+					 Robot::AngleNormalize( drand48() * (M_PI*2.0)),
+					 0, 0, 1 )
   {}
   
   // must implement this method. Examine the pixels vector and set the
   // speed sensibly.
   virtual void Controller()
   {
-      speed.v = 0.005;   // constant forward speed 
-      speed.w = 0.0;     // no turning. we may change this below
+      speed_next_v[id] = 0.005;   // constant forward speed 
+      speed_next_w[id] = 0.0;     // no turning. we may change this below
       
       // steer away from the closest roboot
       int closest = -1;
@@ -39,12 +42,12 @@ public:
            return;
       
       if( closest < (int)pixel_count / 2 )
-           speed.w = 0.03; 
+           speed_next_w[id] = 0.03; 
       else
-           speed.w = -0.03; // turn left
+           speed_next_w[id] = -0.03; // turn left
       
       if( invert )
-           speed.w *= -1.0; // invert turn direction
+           speed_next_w[id] *= -1.0; // invert turn direction
      }     
 };
 

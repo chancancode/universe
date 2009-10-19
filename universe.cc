@@ -35,6 +35,23 @@ int Robot::winsize( 600 );
 int Robot::displaylist(0);
 bool Robot::show_data( true );
 
+double *Robot::pose_x;
+double *Robot::pose_y;
+double *Robot::pose_a;
+double *Robot::speed_v;
+double *Robot::speed_w;
+double *Robot::color_r;
+double *Robot::color_g;
+double *Robot::color_b;
+double *Robot::pose_next_x;
+double *Robot::pose_next_y;
+double *Robot::pose_next_a;
+double *Robot::speed_next_v;
+double *Robot::speed_next_w;
+double *Robot::color_next_r;
+double *Robot::color_next_g;
+double *Robot::color_next_b;
+
 char usage[] = "Universe understands these command line arguments:\n"
  "  -? : Prints this helpful message.\n"
  "  -c <int> : sets the number of pixels in the robots' sensor.\n"
@@ -104,15 +121,24 @@ void Robot::DrawAll()
 
 #endif // GRAPHICS
 
-Robot::Robot( const Pose& pose, 
-				  const Color& color )
-  : pose(pose),
-	 speed(),
-	 color(color),
-	 pixels()
+Robot::Robot(double x, double y, double a, double r, double g, double b)
+  : pixels()
 {
   // add myself to the static vector of all robots
+  id = population.size();
   population.push_back( this );
+  
+  pose_next_x[id] = x;
+  pose_next_y[id] = y;
+  pose_next_a[id] = a;
+  
+  speed_next_v[id] = 0.0;
+  speed_next_w[id] = 0.0;
+  
+  color_next_r[id] = r;
+  color_next_g[id] = g;
+  color_next_b[id] = b;
+
   pixels.resize( pixel_count );
 }
 
@@ -187,6 +213,29 @@ void Robot::Init( int argc, char** argv )
     sector_search_radius = ceil( range / sector_width);
     sectors = std::vector< std::vector< std::vector<Robot*> > >(num_of_sectors, std::vector< std::vector<Robot*> >(num_of_sectors));
 	
+	// initialize the buffers
+    pose_x = new double[population_size];
+    pose_y = new double[population_size];
+    pose_a = new double[population_size];
+    
+    speed_v = new double[population_size];
+    speed_w = new double[population_size];
+    
+    color_r = new double[population_size];
+    color_g = new double[population_size];
+    color_b = new double[population_size];
+    
+    pose_next_x = new double[population_size];
+    pose_next_y = new double[population_size];
+    pose_next_a = new double[population_size];
+    
+    speed_next_v = new double[population_size];
+    speed_next_w = new double[population_size];
+    
+    color_next_r = new double[population_size];
+    color_next_g = new double[population_size];
+    color_next_b = new double[population_size];
+
 #if GRAPHICS
     // initialize opengl graphics
     glutInit( &argc, argv );
@@ -245,8 +294,8 @@ void Robot::UpdatePixels()
   std::vector<Robot*> *sector = 0;
   
   // find my location
-  int grid_x = floor(pose.x/sector_width);
-  int grid_y = floor(pose.y/sector_width);
+  int grid_x = floor(pose_x[id]/sector_width);
+  int grid_y = floor(pose_y[id]/sector_width);
   
   sector = &sectors[grid_x][grid_y];
   
@@ -262,7 +311,7 @@ void Robot::UpdatePixels()
       // discard if it's out of range. We put off computing the
       // hypotenuse as long as we can, as it's relatively expensive.
 		
-      double dx = other->pose.x - pose.x;
+      double dx = pose_x[other->id] - pose_x[id];
 
 		// wrap around torus
 		if( dx > halfworld )
@@ -273,7 +322,7 @@ void Robot::UpdatePixels()
 		if( fabs(dx) > Robot::range )
 		  continue; // out of range
 		
-      double dy = other->pose.y - pose.y;
+      double dy = pose_y[other->id] - pose_y[id];
 
 		// wrap around torus
 		if( dy > halfworld )
@@ -290,7 +339,7 @@ void Robot::UpdatePixels()
 			
       // discard if it's out of field of view 
       double absolute_heading = atan2( dy, dx );
-      double relative_heading = AngleNormalize((absolute_heading - pose.a) );
+      double relative_heading = AngleNormalize((absolute_heading - pose_a[id]) );
       if( fabs(relative_heading) > fov/2.0   ) 
 				continue; 
 			
@@ -315,27 +364,32 @@ void Robot::UpdatePixels()
 void Robot::UpdatePose()
 {
   // move according to the current speed 
-  double dx = speed.v * cos(pose.a);
-  double dy = speed.v * sin(pose.a);; 
-  double da = speed.w;
+  double dx = speed_v[id] * cos(pose_a[id]);
+  double dy = speed_v[id] * sin(pose_a[id]);; 
+  double da = speed_w[id];
   
-  pose.x = DistanceNormalize( pose.x + dx );
-  pose.y = DistanceNormalize( pose.y + dy );
-  pose.a = AngleNormalize( pose.a + da );
+  pose_next_x[id] = DistanceNormalize( pose_x[id] + dx );
+  pose_next_y[id] = DistanceNormalize( pose_y[id] + dy );
+  pose_next_a[id] = AngleNormalize( pose_a[id] + da );
   
   // find my location
-  int grid_x = floor(pose.x/sector_width);
-  int grid_y = floor(pose.y/sector_width);
+  int grid_x = floor(pose_next_x[id]/sector_width);
+  int grid_y = floor(pose_next_y[id]/sector_width);
   
 #if GRAPHICS
   // color myself
-  if((grid_x%2+grid_y%2)%2 == 0)
-    color = Color(0,0,1);
-  else
-    color = Color(1,0,0);
+  if((grid_x%2+grid_y%2)%2 == 0){
+      color_next_r[id] = 0;
+      color_next_g[id] = 0;
+      color_next_b[id] = 1;
+  }else{
+      color_next_r[id] = 1;
+      color_next_g[id] = 0;
+      color_next_b[id] = 0;
+  }
 #endif
   
-  // Register with the sectors
+  // Register with the sectors *move*
   for(int i=grid_x-sector_search_radius;i<=grid_x+sector_search_radius;i++)
     for(int j=grid_y-sector_search_radius;j<=grid_y+sector_search_radius;j++)
       sectors[(i+num_of_sectors)%num_of_sectors][(j+num_of_sectors)%num_of_sectors].push_back(this);
@@ -343,11 +397,13 @@ void Robot::UpdatePose()
 
 void Robot::UpdateAll()
 {
+  SwapBuffers();
+  
   // if we've done enough updates, exit the program
   if( updates_max > 0 && updates > updates_max )
     {
         FOR_EACH( r, population )
-			printf( "x %3f y %3f a %3f\n", (*r)->pose.x, (*r)->pose.y, (*r)->pose.a);
+			printf( "x %3f y %3f a %3f\n", pose_x[(*r)->id], pose_y[(*r)->id], pose_a[(*r)->id]);
         
         exit(1);
     }
@@ -378,10 +434,10 @@ void Robot::Draw()
 {
 #if GRAPHICS
   glPushMatrix();
-  glTranslatef( pose.x, pose.y, 0 );
-  glRotatef( rtod(pose.a), 0,0,1 );
+  glTranslatef( pose_x[id], pose_y[id], 0 );
+  glRotatef( rtod(pose_a[id]), 0,0,1 );
   
-	glColor3f( color.r, color.g, color.b ); 
+	glColor3f( color_r[id], color_g[id], color_b[id] ); 
 
 	// draw the pre-compiled triangle for a body
   glCallList(displaylist);
@@ -400,7 +456,7 @@ void Robot::Draw()
 				double dx2 = pixels[p].range * cos(angle-rads_per_pixel/2.0);
 				double dy2 = pixels[p].range * sin(angle-rads_per_pixel/2.0);
 				
-				glColor4f( color.r, color.g, color.b, pixels[p].robot ? 0.2 : 0.05 );
+				glColor4f( color_r[id], color_g[id], color_b[id], pixels[p].robot ? 0.2 : 0.05 );
 				
 				glBegin( GL_POLYGON );
 				glVertex2f( 0,0 );
@@ -439,4 +495,42 @@ double Robot::AngleNormalize( double a )
 	while( a < -M_PI ) a += 2.0*M_PI;
 	while( a >  M_PI ) a -= 2.0*M_PI;	 
 	return a;
-}	 
+}
+
+/** Swap the buffers **/
+void Robot::SwapBuffers()
+{
+    double *temp;
+    
+    temp = pose_x;
+    pose_x = pose_next_x;
+    pose_next_x = temp;
+    
+    temp = pose_y;
+    pose_y = pose_next_y;
+    pose_next_y = temp;
+    
+    temp = pose_a;
+    pose_a = pose_next_a;
+    pose_next_a = temp;
+    
+    temp = speed_v;
+    speed_v = speed_next_v;
+    speed_next_v = temp;
+    
+    temp = speed_w;
+    speed_w = speed_next_w;
+    speed_next_w = temp;
+    
+    temp = color_r;
+    color_r = color_next_r;
+    color_next_r = temp;
+    
+    temp = color_g;
+    color_g = color_next_g;
+    color_next_g = temp;
+    
+    temp = color_b;
+    color_b = color_next_b;
+    color_next_b = temp;
+}
