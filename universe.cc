@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include "universe.h"
 using namespace Uni;
@@ -370,6 +371,24 @@ void Robot::UpdatePose()
 #endif
 }
 
+void *FirstHalf(void * dummy){
+    for(unsigned int i=0;i<Robot::population_size/2;i++){
+        Robot::population[i]->UpdatePixels();
+        Robot::population[i]->Controller();
+	    Robot::population[i]->UpdatePose();
+	}
+	pthread_exit(NULL);
+}
+
+void *SecondHalf(void * dummy){
+    for(unsigned int i=Robot::population_size/2;i<Robot::population_size;i++){
+        Robot::population[i]->UpdatePixels();
+        Robot::population[i]->Controller();
+	    Robot::population[i]->UpdatePose();
+	}
+	pthread_exit(NULL);
+}
+
 void Robot::UpdateAll()
 {
   SwapBuffers();
@@ -400,14 +419,13 @@ void Robot::UpdateAll()
             
             /** Parallel **/
             
-			FOR_EACH( r, population )
-				(*r)->UpdatePixels();
-
-			FOR_EACH( r, population )
-				(*r)->Controller();
-			
-			FOR_EACH( r, population )
-				(*r)->UpdatePose();
+            pthread_t threads[2];
+            
+            pthread_create(&threads[0], NULL, FirstHalf, NULL);
+            pthread_create(&threads[1], NULL, SecondHalf, NULL);
+            
+            pthread_join(threads[0], NULL);
+            pthread_join(threads[1], NULL);
 		}
 
   ++updates;
