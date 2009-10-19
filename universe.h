@@ -19,7 +19,7 @@
 
 namespace Uni
 {
-  /** Convert radians to degrees. */
+  /** Convert radians to degrees */
   inline double rtod( double r ){ return( r * 180.0 / M_PI ); }
   /** Convert degrees to radians */
   inline double dtor( double d){ return( d * M_PI / 180.0 ); }
@@ -110,7 +110,7 @@ namespace Uni
 	 
    int id;
 	 std::vector<Pixel> pixels; // robot's sensor data vector
-	 
+	 	 
 	 // create a new robot with these parameters
 	 Robot(double x, double y, double a, double r, double g, double b);
 	 

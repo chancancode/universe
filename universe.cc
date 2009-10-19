@@ -294,8 +294,8 @@ void Robot::UpdatePixels()
   std::vector<Robot*> *sector = 0;
   
   // find my location
-  int grid_x = floor(pose_x[id]/sector_width);
-  int grid_y = floor(pose_y[id]/sector_width);
+  int grid_x = floor(pose_next_x[id]/sector_width);
+  int grid_y = floor(pose_next_y[id]/sector_width);
   
   sector = &sectors[grid_x][grid_y];
   
@@ -311,7 +311,7 @@ void Robot::UpdatePixels()
       // discard if it's out of range. We put off computing the
       // hypotenuse as long as we can, as it's relatively expensive.
 		
-      double dx = pose_x[other->id] - pose_x[id];
+      double dx = pose_next_x[other->id] - pose_next_x[id];
 
 		// wrap around torus
 		if( dx > halfworld )
@@ -322,7 +322,7 @@ void Robot::UpdatePixels()
 		if( fabs(dx) > Robot::range )
 		  continue; // out of range
 		
-      double dy = pose_y[other->id] - pose_y[id];
+      double dy = pose_next_y[other->id] - pose_next_y[id];
 
 		// wrap around torus
 		if( dy > halfworld )
@@ -339,7 +339,7 @@ void Robot::UpdatePixels()
 			
       // discard if it's out of field of view 
       double absolute_heading = atan2( dy, dx );
-      double relative_heading = AngleNormalize((absolute_heading - pose_a[id]) );
+      double relative_heading = AngleNormalize((absolute_heading - pose_next_a[id]) );
       if( fabs(relative_heading) > fov/2.0   ) 
 				continue; 
 			
