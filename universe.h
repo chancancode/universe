@@ -17,6 +17,11 @@
 #define VAR(V,init) __typeof(init) V=(init)
 #define FOR_EACH(I,C) for(VAR(I,(C).begin());I!=(C).end();I++)
 
+#if !defined(max)
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
 namespace Uni
 {
   /** Convert radians to degrees */
@@ -52,17 +57,17 @@ namespace Uni
 	 /** initialization: call this before using any other calls. */	
 	 static void Init( int argc, char** argv );
 
-	 /** update all robots */
-	 static void UpdateAll();
-
 	 /** Normalize a length to within 0 to worldsize. */
 	 static double DistanceNormalize( double d );
 
 	 /** Normalize an angle to within +/_ M_PI. */
 	 static double AngleNormalize( double a );
 
-	 /** Swap the buffers **/
-   static void SwapBuffers();
+	 /** Synchronization (swap buffer etc) */
+	 static void Synchronize();
+
+   /** Worker **/
+   static void *Worker(void *args);
 
 	 /** Start running the simulation. Does not return. */
 	 static void Run();
@@ -82,7 +87,8 @@ namespace Uni
 	 static bool paused; // runs only when this is false
 	 static bool show_data; // controls visualization of pixel data
 	 static int winsize; // initial size of the window in pixels
-	 static int displaylist; // robot body macro
+	 static int displaylist; // robot body macros
+   static int num_threads; // number of threads to spawn
 
    /** Double Buffer **/
    

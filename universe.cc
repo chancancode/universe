@@ -17,6 +17,12 @@ const char* PROGNAME = "universe";
 #include <GLUT/glut.h> // OS X users need <glut/glut.h> instead
 #endif
 
+// global vars
+pthread_t *threads;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+int working_threads = 0;
+
 // initialize static members
 double Robot::worldsize(1.0);
 double Robot::range( 0.1 );
@@ -34,6 +40,7 @@ bool Robot::paused( false );
 int Robot::winsize( 600 );
 int Robot::displaylist(0);
 bool Robot::show_data( true );
+int Robot::num_threads(1);
 double **Robot::pose;
 double **Robot::color;
 double **Robot::pose_next;
@@ -49,17 +56,11 @@ char usage[] = "Universe understands these command line arguments:\n"
  "  -s <float> : sets the side length of the (square) world.\n"
  "  -u <int> : sets the number of updates to run before quitting.\n"
  "  -w <int> : sets the initial size of the window, in pixels.\n"
- "  -z <int> : sets the number of milliseconds to sleep between updates.\n";
+ "  -z <int> : sets the number of milliseconds to sleep between updates.\n"
+ "  -t <int> : sets the number of threads to spawn.\n";
 
 #if GRAPHICS
 // GLUT callback functions ---------------------------------------------------
-
-// update the world - this is called whenever GLUT runs out of events
-// to process
-static void idle_func( void )
-{
-  Robot::UpdateAll();
-}
 
 static void timer_func( int dummy )
 {
@@ -95,7 +96,14 @@ static void mouse_func(int button, int state, int x, int y)
 {  
   if( (button == GLUT_LEFT_BUTTON) && (state == GLUT_DOWN ) )
 	 {
+        pthread_mutex_lock(&mutex);
+		if(Robot::paused && working_threads == 0){
+		    //fprintf( stderr, "Main thread is waking everyone up...\n" );
+            working_threads = Robot::num_threads;
+		    pthread_cond_broadcast(&cond);
+		}
 		Robot::paused = !Robot::paused;
+        pthread_mutex_unlock(&mutex);
 	 }
 }
 
@@ -136,7 +144,7 @@ void Robot::Init( int argc, char** argv )
 	
   // parse arguments to configure Robot static members
 	int c;
-	while( ( c = getopt( argc, argv, "?dp:s:f:r:c:u:z:w:")) != -1 )
+	while( ( c = getopt( argc, argv, "?dp:s:f:r:c:u:z:t:w:")) != -1 )
 		switch( c )
 			{
 			case 'p': 
@@ -174,6 +182,11 @@ void Robot::Init( int argc, char** argv )
 				fprintf( stderr, "[Uni] sleep_msec: %d\n", sleep_msec );
 				break;
 				
+			case 't':
+                num_threads = atoi( optarg );
+                fprintf( stderr, "[Uni] num_threads: %d\n", num_threads );
+                break;
+                
 #if GRAPHICS
 			case 'w': winsize = atoi( optarg );
 				fprintf( stderr, "[Uni] winsize: %d\n", winsize );
@@ -219,6 +232,8 @@ void Robot::Init( int argc, char** argv )
         pose_next[i]  = new double[3];
         color_next[i] = new double[3];
     }
+    
+    threads = new pthread_t[num_threads];
 
 #if GRAPHICS
     // initialize opengl graphics
@@ -230,7 +245,6 @@ void Robot::Init( int argc, char** argv )
     glutDisplayFunc( display_func );
     glutTimerFunc( 50, timer_func, 0 );
     glutMouseFunc( mouse_func );
-    glutIdleFunc( idle_func );
     glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
     glEnable( GL_BLEND );
     glMatrixMode( GL_PROJECTION );
@@ -371,68 +385,95 @@ void Robot::UpdatePose()
 #endif
 }
 
-void *FirstHalf(void * dummy){
-    for(unsigned int i=0;i<Robot::population_size/2;i++){
-        Robot::population[i]->UpdatePixels();
-        Robot::population[i]->Controller();
-	    Robot::population[i]->UpdatePose();
-	}
+void *Robot::Worker(void *args){
+    int id = (int) args;
+    
+    unsigned int per_thread = (int) ceil(1.0*population_size / num_threads);
+    
+    unsigned int lower = id * per_thread;
+    unsigned int upper = min(lower+per_thread, population_size);
+    
+    //fprintf( stderr, "Thread %d spawned to work on #%d to #%d.\n", id, lower, upper );
+    
+    while(true){
+        //fprintf( stderr, "Thread %d has started working...\n", id );
+        
+        for(unsigned int i=lower;i<upper;i++){
+            Robot::population[i]->UpdatePixels();
+            Robot::population[i]->Controller();
+    	    Robot::population[i]->UpdatePose();            
+        }
+        
+        pthread_mutex_lock(&mutex);
+        
+        //fprintf( stderr, "Thread %d is done working.\n", id );
+        
+        working_threads--;
+        if(working_threads > 0){
+            //fprintf( stderr, "Thread %d is waiting...\n", id );
+            pthread_cond_wait(&cond, &mutex);
+        }else{
+            //fprintf( stderr, "Thread %d is synchronizing...\n", id );
+            
+            Synchronize();
+            
+            //fprintf( stderr, "Thread %d is done synchronizing.\n", id );
+            
+            if(paused){
+                //fprintf( stderr, "Paused. Thread %d is waiting...\n", id );
+                pthread_cond_wait(&cond, &mutex);
+            }else{
+                //fprintf( stderr, "Thread %d is waking everyone up...\n", id );
+                working_threads = num_threads;
+                pthread_cond_broadcast(&cond);
+            }
+        }
+        
+        pthread_mutex_unlock(&mutex);
+    }
+    
 	pthread_exit(NULL);
 }
 
-void *SecondHalf(void * dummy){
-    for(unsigned int i=Robot::population_size/2;i<Robot::population_size;i++){
-        Robot::population[i]->UpdatePixels();
-        Robot::population[i]->Controller();
-	    Robot::population[i]->UpdatePose();
-	}
-	pthread_exit(NULL);
-}
-
-void Robot::UpdateAll()
+void Robot::Synchronize()
 {
-  SwapBuffers();
+  double **temp;
+
+  temp = pose;
+  pose = pose_next;
+  pose_next = temp;
+
+#if GRAPHICS
+  temp = color;
+  color = color_next;
+  color_next = temp;
+#endif
   
   // if we've done enough updates, exit the program
   if( updates_max > 0 && updates > updates_max )
-    {
-        FOR_EACH( r, population )
-			printf( "x %3f y %3f a %3f\n", pose[(*r)->id][0], pose[(*r)->id][1], pose[(*r)->id][2]);
-        
-        exit(1);
-    }
-  
-  if( ! Robot::paused )
-		{
-		    /** Synchronized **/
-		    
-            FOR_EACH( p, sectors )
-                FOR_EACH( q, *p )
-                    (*q).clear();
-            
-            // Register each robot with the sectors
-            FOR_EACH( r, population ){
-              for(int i=(*r)->grid_location[0]-1;i<=(*r)->grid_location[0]+1;i++)
-                for(int j=(*r)->grid_location[1]-1;j<=(*r)->grid_location[1]+1;j++)
-                  sectors[(i+num_of_sectors)%num_of_sectors][(j+num_of_sectors)%num_of_sectors].push_back(*r);
-            }
-            
-            /** Parallel **/
-            
-            pthread_t threads[2];
-            
-            pthread_create(&threads[0], NULL, FirstHalf, NULL);
-            pthread_create(&threads[1], NULL, SecondHalf, NULL);
-            
-            pthread_join(threads[0], NULL);
-            pthread_join(threads[1], NULL);
-		}
+  {
+    FOR_EACH( r, population )
+	  printf( "x %3f y %3f a %3f\n", pose[(*r)->id][0], pose[(*r)->id][1], pose[(*r)->id][2]);
 
-  ++updates;
+    exit(1);
+  }
   
+  FOR_EACH( p, sectors )
+      FOR_EACH( q, *p )
+          (*q).clear();
+  
+  // Register each robot with the sectors
+  FOR_EACH( r, population ){
+    for(int i=(*r)->grid_location[0]-1;i<=(*r)->grid_location[0]+1;i++)
+      for(int j=(*r)->grid_location[1]-1;j<=(*r)->grid_location[1]+1;j++)
+        sectors[(i+num_of_sectors)%num_of_sectors][(j+num_of_sectors)%num_of_sectors].push_back(*r);
+  }
+
   // possibly snooze to save CPU and slow things down
   if( sleep_msec > 0 )
 	 usleep( sleep_msec * 1e3 );
+
+  ++updates;
 }
 
 // draw a robot
@@ -478,13 +519,28 @@ void Robot::Draw()
 
 
 void Robot::Run()
-{
-#if GRAPHICS
-  glutMainLoop();
-#else
-  while( 1 )
-    UpdateAll();
-#endif
+{    
+    //fprintf( stderr, "Main thread is synchronizing...\n" );
+    
+    Synchronize();
+    
+    working_threads = num_threads;
+    
+    //fprintf( stderr, "Main thread is done synchronizing.\n" );
+    
+    //fprintf( stderr, "Main thread is spawning %d threads...\n", num_threads );
+    
+    for(int i=0;i<num_threads;i++){
+        pthread_create(&threads[i], NULL, Robot::Worker, (void *) i);
+    }
+
+    #if GRAPHICS
+        glutMainLoop();
+    #endif
+
+    for(int i=0;i<num_threads;i++){
+        pthread_join(threads[i], NULL);
+    }
 }
 
 /** Normalize a length to within 0 to worldsize. */
@@ -501,20 +557,4 @@ double Robot::AngleNormalize( double a )
 	while( a < -M_PI ) a += 2.0*M_PI;
 	while( a >  M_PI ) a -= 2.0*M_PI;	 
 	return a;
-}
-
-/** Swap the buffers **/
-void Robot::SwapBuffers()
-{
-    double **temp;
-    
-    temp = pose;
-    pose = pose_next;
-    pose_next = temp;
-    
-#if GRAPHICS
-    temp = color;
-    color = color_next;
-    color_next = temp;
-#endif
 }
