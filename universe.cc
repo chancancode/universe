@@ -7,7 +7,6 @@
 #include <assert.h>
 #include <unistd.h>
 #include <pthread.h>
-#include <time.h>
 
 #include "universe.h"
 using namespace Uni;
@@ -23,9 +22,6 @@ pthread_t *threads;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 int working_threads = 0;
-clock_t total_waited = (clock_t) 0;
-clock_t first_thread = (clock_t) 0;
-
 
 // initialize static members
 double Robot::worldsize(1.0);
@@ -392,7 +388,7 @@ void Robot::UpdatePose()
 void *Robot::Worker(void *args){
     int id = (int) args;
     
-    unsigned int per_thread = (int) ceil((double) population_size / num_threads);
+    unsigned int per_thread = (int) ceil(1.0*population_size / num_threads);
     
     unsigned int lower = id * per_thread;
     unsigned int upper = min(lower+per_thread, population_size);
@@ -414,19 +410,9 @@ void *Robot::Worker(void *args){
         
         working_threads--;
         if(working_threads > 0){
-            if(working_threads == num_threads-1){
-                first_thread = clock(); 
-            }
-            
             //fprintf( stderr, "Thread %d is waiting...\n", id );
             pthread_cond_wait(&cond, &mutex);
         }else{
-            clock_t me = clock();
-            total_waited += clock() - first_thread;
-            
-            //fprintf( stderr, "Waited %d - %d = %d cycles. Clocks per second = %d. Time = %.5f. Total so far = %d/%.5f.\n",
-            //                 me, first_thread, me - first_thread, CLOCKS_PER_SEC, (double) (me - first_thread) / CLOCKS_PER_SEC, total_waited, (double) total_waited / CLOCKS_PER_SEC );
-                        
             //fprintf( stderr, "Thread %d is synchronizing...\n", id );
             
             Synchronize();
@@ -466,9 +452,6 @@ void Robot::Synchronize()
   // if we've done enough updates, exit the program
   if( updates_max > 0 && updates > updates_max )
   {
-    fprintf( stderr, "Waited %d cycles = %.5f seconds. Average %d cycles (%.5f sec) per update cycle.\n",
-                      (int) total_waited, (double) total_waited / CLOCKS_PER_SEC, (int) total_waited / updates, (double) total_waited / (CLOCKS_PER_SEC * updates) );
-    
     FOR_EACH( r, population )
 	  printf( "x %3f y %3f a %3f\n", pose[(*r)->id][0], pose[(*r)->id][1], pose[(*r)->id][2]);
 
