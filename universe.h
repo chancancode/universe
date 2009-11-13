@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define GRAPHICS 1
+#define GRAPHICS 0
 
 // handy STL iterator macro pair. Use FOR_EACH(I,C){ } to get an iterator I to
 // each item in a collection C.
@@ -21,6 +21,11 @@
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #endif
+
+#define posei(id, i) id*3+i
+#define gridi(id, i) id*2+i
+#define secpi(x, y) x*Robot::num_of_sectors+y
+#define secti(x, y, i) (x*Robot::num_of_sectors+y)*Robot::population_size+i
 
 namespace Uni
 {
@@ -67,7 +72,7 @@ namespace Uni
 	 static void Synchronize();
 
    /** Worker **/
-   static void *Worker(void *args);
+   static void Worker();
 
 	 /** Start running the simulation. Does not return. */
 	 static void Run();
@@ -81,24 +86,25 @@ namespace Uni
 	 static unsigned int pixel_count; // number of pixels in sensor
 	 static std::vector<Robot*> population; // a list of all robots
 	 static unsigned int population_size; // number of robots
-   static std::vector< std::vector< std::vector<Robot*> > > sectors; // 3D vector of robots (ouch brain hurts)
+	 static unsigned int *sectors_pop; // number of ids in each sector
+   static unsigned int *sectors; // 3D array of robots (ouch brain hurts)
    static int num_of_sectors; // number of sectors per row/col
    static double sector_width; // width of each sector
 	 static bool paused; // runs only when this is false
 	 static bool show_data; // controls visualization of pixel data
 	 static int winsize; // initial size of the window in pixels
 	 static int displaylist; // robot body macros
-   static int num_threads; // number of threads to spawn
+   static int num_processes; // number of processes to spawn
 
-   /** Double Buffer **/
-   
+   /** Double Buffer (Shared) **/
+
    /* Read Only */
-   static double **pose;
-   static double **color;
+   static double *pose;
+   static int *grid;
 
    /* Write Only */
-   static double **pose_next;
-   static double **color_next;
+   static double *pose_next;
+   static int *grid_next;
 
 #if GRAPHICS
 	 /** render all robots in OpenGL */
