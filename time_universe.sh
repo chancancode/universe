@@ -5,11 +5,13 @@ mkdir results/$BRANCH
 
 for population in 5000
 do
-    #echo "Population $population (one thread):"
-	#time universe -z 0 -f 10 -u 10000 -p $population -t 1 1> results/$BRANCH/$population.out 2> /dev/null
-	#echo "Population $population (two threads):"
-	#time universe -z 0 -f 10 -u 10000 -p $population -t 2 1> results/$BRANCH/$population.out 2> /dev/null
-	echo "Population $population (three threads):"
-	time universe -z 0 -f 10 -u 10000 -p $population -t 3 1> results/$BRANCH/$population.out 2> /dev/null
-	diff results/original/$population.out results/$BRANCH/$population.out
+    echo "Population $population (one process):"
+	time universe -z 0 -f 10 -u 10000 -p $population -n 1 1> results/$BRANCH/$population-1.out 2> /dev/null
+	diff results/original/$population.out results/$BRANCH/$population-1.out
+	echo "Population $population (two processes):"
+	time universe -z 0 -f 10 -u 10000 -p $population -n 2 1> results/$BRANCH/$population-2.out 2> /dev/null
+	diff results/original/$population.out results/$BRANCH/$population-2.out
+	echo "Population $population (three processes):"
+	time universe -z 0 -f 10 -u 10000 -p $population -n 3 1> results/$BRANCH/$population-3.out 2> /dev/null
+	diff results/original/$population.out results/$BRANCH/$population-3.out
 done
